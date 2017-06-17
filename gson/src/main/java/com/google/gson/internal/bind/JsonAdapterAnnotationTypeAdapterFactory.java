@@ -16,14 +16,13 @@
 
 package com.google.gson.internal.bind;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonSerializer;
-import com.google.gson.TypeAdapter;
-import com.google.gson.TypeAdapterFactory;
+import com.google.gson.*;
 import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.annotations.Parametrized;
 import com.google.gson.internal.ConstructorConstructor;
 import com.google.gson.reflect.TypeToken;
+
+import java.lang.annotation.Annotation;
 
 /**
  * Given a type T, looks for the annotation {@link JsonAdapter} and uses an instance of the
@@ -46,17 +45,24 @@ public final class JsonAdapterAnnotationTypeAdapterFactory implements TypeAdapte
     if (annotation == null) {
       return null;
     }
-    return (TypeAdapter<T>) getTypeAdapter(constructorConstructor, gson, targetType, annotation);
+    return (TypeAdapter<T>) getTypeAdapter(constructorConstructor, gson, targetType, annotation, rawType.getAnnotations());
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" }) // Casts guarded by conditionals.
   TypeAdapter<?> getTypeAdapter(ConstructorConstructor constructorConstructor, Gson gson,
-      TypeToken<?> type, JsonAdapter annotation) {
+                                TypeToken<?> type, JsonAdapter annotation, Annotation[] annotations) {
+    boolean parametrized = false;
+    for (Annotation anno : annotations) {
+      if (anno instanceof Parametrized) parametrized = true;
+    }
+
     Object instance = constructorConstructor.get(TypeToken.get(annotation.value())).construct();
 
     TypeAdapter<?> typeAdapter;
     if (instance instanceof TypeAdapter) {
       typeAdapter = (TypeAdapter<?>) instance;
+    } else if (instance instanceof ParametrizedTypeAdapterFactory && parametrized) {
+      typeAdapter = ((ParametrizedTypeAdapterFactory) instance).create(gson, type, annotations);
     } else if (instance instanceof TypeAdapterFactory) {
       typeAdapter = ((TypeAdapterFactory) instance).create(gson, type);
     } else if (instance instanceof JsonSerializer || instance instanceof JsonDeserializer) {

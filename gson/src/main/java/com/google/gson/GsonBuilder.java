@@ -17,7 +17,6 @@
 package com.google.gson;
 
 import java.lang.reflect.Type;
-import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -572,26 +571,16 @@ public final class GsonBuilder {
         serializeSpecialFloatingPointValues, longSerializationPolicy, factories);
   }
 
-  @SuppressWarnings("unchecked")
   private void addTypeAdaptersForDate(String datePattern, int dateStyle, int timeStyle,
       List<TypeAdapterFactory> factories) {
-    DefaultDateTypeAdapter dateTypeAdapter;
-    TypeAdapter<Timestamp> timestampTypeAdapter;
-    TypeAdapter<java.sql.Date> javaSqlDateTypeAdapter;
+    DefaultDateTypeAdapterFactory dateTypeAdapterFactory;
     if (datePattern != null && !"".equals(datePattern.trim())) {
-      dateTypeAdapter = new DefaultDateTypeAdapter(Date.class, datePattern);
-      timestampTypeAdapter = (TypeAdapter) new DefaultDateTypeAdapter(Timestamp.class, datePattern);
-      javaSqlDateTypeAdapter = (TypeAdapter) new DefaultDateTypeAdapter(java.sql.Date.class, datePattern);
+      dateTypeAdapterFactory = new DefaultDateTypeAdapterFactory(datePattern);
     } else if (dateStyle != DateFormat.DEFAULT && timeStyle != DateFormat.DEFAULT) {
-      dateTypeAdapter = new DefaultDateTypeAdapter(Date.class, dateStyle, timeStyle);
-      timestampTypeAdapter = (TypeAdapter) new DefaultDateTypeAdapter(Timestamp.class, dateStyle, timeStyle);
-      javaSqlDateTypeAdapter = (TypeAdapter) new DefaultDateTypeAdapter(java.sql.Date.class, dateStyle, timeStyle);
+      dateTypeAdapterFactory = new DefaultDateTypeAdapterFactory(dateStyle, timeStyle);
     } else {
       return;
     }
-
-    factories.add(TypeAdapters.newFactory(Date.class, dateTypeAdapter));
-    factories.add(TypeAdapters.newFactory(Timestamp.class, timestampTypeAdapter));
-    factories.add(TypeAdapters.newFactory(java.sql.Date.class, javaSqlDateTypeAdapter));
+    factories.add(dateTypeAdapterFactory);
   }
 }

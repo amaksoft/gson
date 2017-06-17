@@ -109,10 +109,10 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
     TypeAdapter<?> mapped = null;
     if (annotation != null) {
       mapped = jsonAdapterFactory.getTypeAdapter(
-          constructorConstructor, context, fieldType, annotation);
+          constructorConstructor, context, fieldType, annotation, field.getAnnotations());
     }
     final boolean jsonAdapterPresent = mapped != null;
-    if (mapped == null) mapped = context.getAdapter(fieldType);
+    if (mapped == null) mapped = context.getAdapter(fieldType, field.getAnnotations());
 
     final TypeAdapter<?> typeAdapter = mapped;
     return new ReflectiveTypeAdapterFactory.BoundField(name, serialize, deserialize) {

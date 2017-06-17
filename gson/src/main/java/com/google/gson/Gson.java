@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 
+import com.google.gson.annotations.Parametrized;
 import com.google.gson.internal.ConstructorConstructor;
 import com.google.gson.internal.Excluder;
 import com.google.gson.internal.Primitives;
@@ -55,6 +56,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import com.google.gson.stream.MalformedJsonException;
+
+import java.lang.annotation.Annotation;
 
 /**
  * This is the main class for using Gson. Gson is typically used by first constructing a
@@ -395,10 +398,18 @@ public final class Gson {
    *     deserialize {@code type}.
    */
   @SuppressWarnings("unchecked")
-  public <T> TypeAdapter<T> getAdapter(TypeToken<T> type) {
-    TypeAdapter<?> cached = typeTokenCache.get(type == null ? NULL_KEY_SURROGATE : type);
-    if (cached != null) {
-      return (TypeAdapter<T>) cached;
+  public <T> TypeAdapter<T> getAdapter(TypeToken<T> type, Annotation[] annotations) {
+
+    boolean parametrized = false;
+
+    for (Annotation annotation : annotations) {
+      if (annotation instanceof Parametrized) {
+        parametrized = true;
+      }
+    }
+    if (!parametrized) {
+      TypeAdapter<?> cached = typeTokenCache.get(type == null ? NULL_KEY_SURROGATE : type);
+      if (cached != null) return (TypeAdapter<T>) cached;
     }
 
     Map<TypeToken<?>, FutureTypeAdapter<?>> threadCalls = calls.get();
@@ -420,10 +431,15 @@ public final class Gson {
       threadCalls.put(type, call);
 
       for (TypeAdapterFactory factory : factories) {
-        TypeAdapter<T> candidate = factory.create(this, type);
+        TypeAdapter<T> candidate;
+        if (parametrized && factory instanceof ParametrizedTypeAdapterFactory) {
+          candidate = ((ParametrizedTypeAdapterFactory) factory).create(this, type, annotations);
+        } else {
+          candidate = factory.create(this, type);
+        }
         if (candidate != null) {
           call.setDelegate(candidate);
-          typeTokenCache.put(type, candidate);
+          if (!parametrized) typeTokenCache.put(type, candidate); // we don't want to cache parametrized type adapters
           return candidate;
         }
       }
@@ -437,6 +453,15 @@ public final class Gson {
     }
   }
 
+  /**
+   * Returns the type adapter for {@code} type.
+   *
+   * @throws IllegalArgumentException if this GSON cannot serialize and
+   *     deserialize {@code type}.
+   */
+  public <T> TypeAdapter<T> getAdapter(TypeToken<T> type) {
+    return getAdapter(type, new Annotation[]{});
+  }
   /**
    * This method is used to get an alternate type adapter for the specified type. This is used
    * to access a type adapter that is overridden by a {@link TypeAdapterFactory} that you
